@@ -1,0 +1,39 @@
+[grid]
+  N_radial = 10
+  rho_edge = 0.9
+
+[time]
+  N_steps  = 1
+  dtau     = 2e-3
+  alpha    = 0
+
+[model]
+  model = "ReLU"
+
+[[species]]
+type = "deuterium"
+density = {core = 2.7, edge = 0.9, evolve = true}
+temperature = {core = 15, edge = 4, evolve = false}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+density_relu_flux = { critical_gradient = 1, slope = 0.5 }
+pressure_relu_flux = { critical_gradient = 2, slope = 0.5 }
+
+[[species]]
+type = "electron"
+density = {core = 2.7, edge = 0.9, evolve = true}
+temperature = {core = 21, edge = 4, evolve = false}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+density_relu_flux = { critical_gradient = 1, slope = 0.5 }
+pressure_relu_flux = { critical_gradient = 2, slope = 0.5 }
+
+[geometry]
+ geo_option="basic"
+ AspectRatio = 4.0
+ 
+[rescale]
+ L_def = 'minor'
+ a_minor = 2.0 
+ Ba = 1.0
+ 

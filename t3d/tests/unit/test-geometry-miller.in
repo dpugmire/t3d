@@ -1,0 +1,13 @@
+[grid]
+  N_radial = 9
+  rho_edge = 0.8
+  flux_label = 'rminor'
+
+[import]
+  type = "transp"
+  file = "tests/data/pr08_jet_42982_2d.dat"
+  transp_time = 14.8
+
+[geometry]
+  geo_option = 'miller'
+  import = true

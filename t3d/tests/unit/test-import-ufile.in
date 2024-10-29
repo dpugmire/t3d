@@ -1,0 +1,34 @@
+[grid]
+  N_radial = 10
+  rho_edge = 0.8
+  flux_label = "rminor" # "torflux"
+
+[import]
+  type = "transp"
+  file = "tests/data/pr08_jet_42982_2d.dat"
+  transp_time = 15.2
+  #type = 'trinity'
+  #file = 'log_trinity.npy'
+
+[[species]]
+type = "deuterium"
+density = {import = true, evolve = false}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true } #, keys = ['SNBII', 'SWALL'] } 
+aux_power_source = { import = true} #, keys = ['QNBII']} #, 'QICRHI', 'QECHI', 'QLHI', 'QIBWI', 'QWALLI'] } 
+
+[[species]]
+type = "tritium"
+density = {import = false, evolve = false}
+temperature = {import = false, evolve = true}
+
+[[species]]
+type = "electron"
+density = {import = true, evolve = false}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true} #, keys = ['SBE', 'SNBIE'] } 
+aux_power_source = { import = true } #, keys = ['QNBIE', 'QICRHE', 'QECHE', 'QLHE', 'QIBWE', 'QWALLE', 'QOHM'] } 
+
+[geometry]
+  geo_option = "miller"
+  import = true

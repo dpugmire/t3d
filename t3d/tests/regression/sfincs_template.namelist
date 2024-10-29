@@ -1,0 +1,51 @@
+! Input file for SFINCS version 3.
+! See the user manual for documentation of the parameters in this file.
+!----------------------------------------------------------------------
+
+&general
+  er_min = -20
+  er_max = 20
+/
+
+&geometryParameters
+  geometryScheme = 5
+  VMECRadialOption = 0
+
+  inputRadialCoordinate = 3  ! rN
+
+  equilibriumFile = ""
+/
+
+&speciesParameters
+/
+
+&physicsParameters
+  collisionOperator = 0
+  includePhi1 = .false.
+  includeXDotTerm = .true.
+  includeElectricFieldTermInXiDot = .true.
+  useDKESExBDrift = .false.
+  magneticDriftScheme = 1
+/
+
+&resolutionParameters
+  Ntheta = 19
+
+  Nzeta = 59
+
+  Nxi = 60
+  
+  Nx = 5
+
+  solverTolerance = 1e-06 
+/
+
+&otherNumericalParameters
+ !useIterativeLinearSolver=.false.
+/
+
+&preconditionerOptions
+/
+
+&export_f
+/

@@ -1,0 +1,11 @@
+name: t3d
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - matplotlib
+  - netcdf4
+  - adios2
+  - flake8
+  - h5py
+  - pyqt

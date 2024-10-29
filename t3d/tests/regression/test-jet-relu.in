@@ -1,0 +1,57 @@
+[grid]
+  N_radial = 9
+  rho_edge = 0.8
+  flux_label = 'rminor'
+
+[time]
+  newton_threshold = 0.01
+  max_newton_iter = 4
+  dtau = 0.1
+  t_max = 100
+  alpha = 1.0
+
+[[model]]
+  model = "ReLU"       
+  D_neo = 0.0
+
+[[model]]
+  model = "ChangHinton"
+
+[[species]]
+type = "deuterium"
+density = {import = true, evolve = true}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true }
+aux_power_source = { import = true }
+density_relu_flux  = {critical_gradient = 0.5, slope = 1.2}
+pressure_relu_flux = {critical_gradient = 1.4, slope = 15}
+
+[[species]]
+type = "electron"
+density = {import = true, evolve = true}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true }
+aux_power_source = { import = true }
+density_relu_flux  = {critical_gradient = 0.5, slope = 1.2}
+pressure_relu_flux = {critical_gradient = 1.4, slope = 3.3}
+
+[import]
+  type = "transp"
+  file = "tests/data/pr08_jet_42982_2d.dat"
+  transp_time = 14.8
+
+[geometry]
+  geo_option = 'miller'
+  import = true
+
+[physics]
+  collisions = true
+  alpha_heating = true
+  bremsstrahlung = true
+  update_equilibrium = false
+  turbulent_exchange = false
+  Zeff = {import = true}
+
+[log]
+  output_netcdf = true
+  output_adios2 = true

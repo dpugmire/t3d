@@ -1,0 +1,54 @@
+[grid]
+N_radial = 10
+rho_edge = 0.95
+flux_label = 'torflux'
+
+[time]
+dtau     = 0.1
+# N_steps  = 40
+t_max = 10.0
+alpha    = 1.0
+newton_tolerance = 0.02
+newton_threshold = 0.01
+max_newton_iter = 5
+
+[[model]]
+model = "ReLU"          
+D_neo = 0.0
+
+[[species]]
+type = "deuterium"
+density = {core = 0.35, edge = 0.29, alpha=1, evolve = true}
+temperature = {core = 2.0, edge = 0.8, evolve = true}
+aux_particle_source = {height = 0, width = 0.2, center = 0.5 }
+aux_power_source = {integrated = 2.0, width = 0.1, center = 0.4 }
+density_relu_flux = {critical_gradient = 0.1, slope = 1.2}
+pressure_relu_flux = {critical_gradient = 0.1, slope = 1.2}
+
+[[species]]
+type = "electron"
+density = {core = 0.35, edge = 0.29, alpha=1, evolve = true}
+temperature = {core = 6.7, edge = 0.8, alpha=2, evolve = true}
+aux_particle_source = {height = 0, width = 0.2, center = 0.5}
+aux_power_source = {integrated = 2.0, width = 0.2, center = 0.1}
+density_relu_flux = {critical_gradient = 0.1, slope = 1.2}
+pressure_relu_flux = {critical_gradient = 0.1, slope = 1.2}
+
+[geometry]
+geo_option = "vmec"
+geo_file = "tests/data/wout_w7x.nc"
+
+[rescale]
+B_def = 'vmecB0'
+vmecB0 = 1.0
+
+L_def = 'major'
+R_major = 10.0
+  
+[physics]
+collisions = true
+alpha_heating = true
+radiation = true
+update_equilibrium = false
+turbulent_exchange = false
+

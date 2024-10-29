@@ -1,0 +1,60 @@
+[grid]
+  N_radial = 21
+  rho_edge = 0.95
+  flux_label = 'torflux'
+
+[time]
+  dtau     = 0.1
+  #N_steps  = 100
+  t_max = 20.0
+  alpha    = 1.0
+  newton_tolerance = 0.02
+  newton_threshold = 0.01
+  max_newton_iter = 3
+
+[[model]]
+  model = "ReLU"          
+  D_neo = 0.0
+
+[[species]]
+type = "deuterium"
+density = {equal_to = "0.495*electron", evolve = false}
+temperature = {core = 1.2, edge = 0.4, evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.4 }
+density_relu_flux = {critical_gradient = 100, slope = 0}
+pressure_relu_flux = {critical_gradient = 0.1, slope = 1.8}
+
+[[species]]
+type = "tritium"
+density = {equal_to = "0.495*electron", evolve = false}
+temperature = {core = 1.2, edge = 0.4, evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.4 }
+density_relu_flux = {critical_gradient = 100, slope = 0}
+pressure_relu_flux = {critical_gradient = 0.1, slope = 1.8}
+
+[[species]]
+type = "carbon"
+density = {equal_to = "0.01*electron", evolve = false}
+temperature = {equal_to = 'deuterium'}
+
+[[species]]
+type = "electron"
+density = {core = 0.65, edge = 0.35, alpha=0.5, evolve = false}
+temperature = {core = 1.2, edge = 0.4, evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { integrated = 4.0, width = 0.1, center = 0.15 }
+density_relu_flux = {critical_gradient = 100, slope = 0}
+pressure_relu_flux = {critical_gradient = 0.1, slope = 1.2}
+
+[geometry]
+  geo_option = "vmec"
+  geo_file = "tests/data/wout_w7x.nc"
+
+[physics]
+  collisions = true
+  alpha_heating = true
+  radiation = true
+  update_equilibrium = false
+  turbulent_exchange = false

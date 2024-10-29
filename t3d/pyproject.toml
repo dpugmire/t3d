@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "t3d"
+requires-python = ">=3.10"
+dynamic = ["version"]
+authors = [
+    {name = "Tony Qian", email = "tqian@pppl.gov"},
+    {name = "Noah Mandell", email = "nmandell@pppl.gov"},
+    {name = "Bill Dorland", email = "bdorland@pppl.gov"},
+    {name = "Jai Sachdev", email = "jsachdev@pppl.gov"},
+]
+description = "Short description about t3d"
+readme = "README.md"
+keywords = ["plasma physics", "fusion", "stellarator", "tokamak", "transport"]
+license = {text = "GNU General Public License 3"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "setuptools-scm",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "PyQt6",
+    "netcdf4",
+    "adios2",
+    "termcolor",
+    "tomli; python_version < '3.11'",
+    "tomli-w; python_version < '3.11'",
+    "tomlkit; python_version < '3.11'",
+    "autopep8",
+    "flake8",
+    "f90nml",
+    "bpcmp"
+]
+
+[project.optional-dependencies]
+gx = ["booz_xform"]
+knosos = ["booz_xform"]
+desc = ["desc-opt"]
+all = ["t3d[gx, knosos]"]
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+    "readthedocs-sphinx-search",
+    "sphinx-autobuild"
+]
+mayavi = [
+    "numpy==1.26.2",
+    "vtk==9.2.6",
+    "PyQt5==5.15.10",
+    "mayavi==4.8.1",
+    "configobj"
+]
+
+[project.scripts]
+t3d = "t3d.__main__:main"
+t3d-plot = "t3d.tools.profile_plot:main"
+t3d-unittests = "unittest:__main__"
+
+[tool.setuptools_scm]
+
+[tool.autopep8]
+max_line_length = 120
+ignore = ["E226", "E231", "E241", "E301", "E501", "E722"]
+recursive = true
+in-place = true
+aggressive = 3

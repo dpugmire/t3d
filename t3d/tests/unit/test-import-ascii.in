@@ -1,0 +1,31 @@
+[grid]
+  N_radial = 10
+  rho_edge = 0.8
+  flux_label = "torflux"
+
+[import]
+  type = "columns"
+  file = "tests/data/profiles.txt"
+  columns = ['rho', 'n_e', 'T_e', 'T_i'] # keys corresponding to columns
+  # divide each column by a factor to get expected units
+  # here, n_e data in profiles.txt is in 10^19 m^-3, so divide by 10 to get it in 10^20 m^-3 like T3D expects
+  # and divide r_eff by a=0.51 to get rho = r_eff/a (normalized sqrt of toroidal flux)
+  divide_by = [0.51, 10, 1, 1]  
+
+[[species]]
+type = "hydrogen"
+density = {evolve = false} # will be set by quasineutrality
+temperature = {import = true, key = 'T_i', evolve = true}
+
+[[species]]
+type = "electron"
+density = {import = true, key = 'n_e', evolve = false}
+temperature = {import = true, key = 'T_e', evolve = true}
+
+[geometry]
+  geo_option = "basic"
+  AspectRatio = 4.0
+
+[rescale]
+  a_minor = 1.0
+  Ba = 2.5

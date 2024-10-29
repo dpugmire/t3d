@@ -1,0 +1,38 @@
+image: python:3.10
+
+definitions:
+  steps:
+    - step: &unittests
+        name: unittests
+        script:
+          - pip install .
+          - t3d-unittests
+    - step: &regressiontests
+        name: regression
+        script:
+          - pip install .
+          - t3d tests/regression/test-jet-relu.in
+          - bpcmp --ignore-atts title history inputs infile -r 1e-9 -v 1 tests/regression/test-jet-relu.bp tests/regression/ref-jet-relu.bp
+          - t3d tests/regression/test-w7x-relu.in
+          - bpcmp --ignore-atts title history inputs infile -r 1e-9 -v 1 tests/regression/test-w7x-relu.bp tests/regression/ref-w7x-relu.bp
+
+pipelines:
+  pull-requests:
+    "**":
+      - step: *unittests
+      - step: *regressiontests
+  branches:
+    "**":
+      - step: *unittests
+      - step: *regressiontests
+    main:
+      - step:
+          name: autopep8
+          script:
+            - git remote set-url origin ${BITBUCKET_GIT_SSH_ORIGIN}
+            - pip install .
+            - autopep8 .
+            - ./ci/autopep8-commit.sh
+
+options:
+  fork: true

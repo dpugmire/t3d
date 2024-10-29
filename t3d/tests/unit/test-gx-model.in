@@ -1,0 +1,46 @@
+[grid]
+  N_radial = 5
+  rho_edge = 0.8
+  flux_label = 'rminor'
+
+[time]
+  N_steps  = 1
+  dtau     = 2e-3
+  alpha    = 0.5
+
+[import]
+  type = "transp"
+  file = "tests/data/pr08_jet_42982_2d.dat"
+  transp_time = 15.2
+
+[model]
+  model = "GX"          
+  gx_template = "tests/unit/gx_template.in"
+  gx_outputs = "tests/unit/gx"
+  overwrite = true
+
+[[species]]
+type = "deuterium"
+density = {import = true, evolve = true}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true }
+aux_power_source = { import = true }
+#density = {core = 2.7, edge = 0.9, evolve = false}
+#temperature = {core = 15, edge = 4, evolve = true}
+#aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+#aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "electron"
+density = {import = true, evolve = true}
+temperature = {import = true, evolve = true}
+aux_particle_source = { import = true }
+aux_power_source = { import = true }
+#density = {core = 2.7, edge = 0.9, evolve = false}
+#temperature = {core = 21, edge = 4, evolve = false}
+#aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+#aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[geometry]
+geo_option = 'miller'
+import = true

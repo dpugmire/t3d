@@ -1,0 +1,39 @@
+[[species]]
+type = "deuterium"
+density = {shape = 'exponential', coefs = [6.311, 0.7451, -1.5, 1.343], evolve = true}
+temperature = {core = 5, edge = 2, evolve = true}
+aux_particle_source = { height = 5, width = 0.2, center = 0.5 }
+aux_power_source = { height = 10, width = 0.2, center = 0.4 }
+
+[[species]]
+type = "electron"
+density = {lineavg = 5, edge = 2, evolve = true}
+temperature = {core = 5, edge = 2, equal_to = "deuterium"}
+aux_particle_source = { integrated = 1, width = 0.2, center = 0.5 }
+aux_power_source = { integrated = 10, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "tritium"
+#use_as_reference = true
+density = {volavg = 5, edge = 2, evolve = false}
+temperature = {shape = 'custom', func = '''
+def init(rho):
+    return (1-rho**2)
+''', evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "x"
+Z = 3
+mass = 1
+density = {evolve = true}
+temperature = {init_to = "0.1*electron", evolve = false}
+
+[grid]
+N_radial = 100
+
+[geometry]
+geo_file = "tests/data/wout_w7x.nc"
+geo_option = "vmec"
+compute_surface_areas = false

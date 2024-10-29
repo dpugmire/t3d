@@ -1,0 +1,35 @@
+# NOTE: When specifying Zeff for an impurity species in [[species]], other ion species densities must be initialized such that quasineutrality is satisfied with no impurities present (ne = sum_j Z_j n_j for non-impurity ions j).
+# Here, we initialize n_D = n_T = 0.5*n_e. This will be adjusted to account for the tungsten impurity to satisfy Zeff = 1.2, 
+# and n_D = n_T will be preserved.
+
+[[species]]
+type = "electron"
+density = {core = 5, edge = 2, evolve = true}
+temperature = {core = 5, edge = 2, evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "deuterium"
+density = {init_to = "0.5*electron", evolve = true}
+temperature =  {init_to = "0.9*electron", evolve = true}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "tritium"
+density = {init_to = "0.5*electron", evolve = true}
+temperature =  {equal_to = "deuterium"}
+aux_particle_source = { height = 0, width = 0.2, center = 0.5 }
+aux_power_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "tungsten"
+impurity = true
+Zeff = 1.2
+temperature = {init_to = "deuterium", evolve = true}
+
+[geometry]
+geo_file = "tests/data/wout_w7x.nc"
+geo_option = "vmec"
+compute_surface_areas = false

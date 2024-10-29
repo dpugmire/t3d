@@ -1,0 +1,29 @@
+/* override table width restrictions */
+@media screen and (min-width: 767px) {
+
+   .wy-table-responsive table td {
+      /* !important prevents the common CSS stylesheets from overriding
+         this as on RTD they are loaded after this stylesheet */
+      white-space: normal !important;
+   }
+
+   .wy-table-responsive {
+      overflow: visible !important;
+   }
+}
+
+iframe {
+  height: 50em;
+  width: 100%;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  border-left: #808080 1px solid;
+}
+~                                                                                                                                                                                                                   
+~                                                                                                                                                                                                                   
+~                                                                                                                                                                                                                   
+~                                                                                                                                                                                                                   
+~                                                                                                                                                                                                                   
+~                                                                                                                                                                                                                   
+~                                     

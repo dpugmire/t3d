@@ -1,0 +1,12 @@
+[grid]
+  N_radial = 17
+  rho_edge = 0.9
+
+[geometry]
+  geo_option="basic"
+  AspectRatio = 4.0
+
+[rescale]
+  L_def = 'minor'
+  a_minor = 2.0 
+  Ba = 1.0

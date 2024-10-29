@@ -1,0 +1,51 @@
+[grid]
+  N_radial = 10
+  rho_edge = 0.8
+  flux_label = "torflux"
+
+
+[import]
+  type = "columns"
+  #file = "tests/data/profiles.txt"
+  file = "tests/data/data3.txt"
+  #columns = ['rho', 'n_e', 'n_D', 'n_C', 'T_e', 'T_i', 'G_e', 'G_D', 'Q_e', 'Q_D', 'Q_C'] # keys corresponding to columns, ignoring carbon source for now
+  #columns = ['rho', 'n_e', 'n_D', 'n_C', 'T_e', 'T_i', 'Sn_e', 'Sn_D', 'Sp_e', 'Sp_D', 'Sp_C'] # keys corresponding to columns, ignoring carbon source for now
+  columns = ['rho', 'n_e', 'n_D', 'n_C', 'T_e', 'T_i', 'Sp_e', 'Sp_D', 'Sp_C'] # keys corresponding to columns, ignoring particle sources
+  # divide each column by a factor to get expected units
+  # here, n_e data in profiles.txt is in 10^19 m^-3, so divide by 10 to get it in 10^20 m^-3 like T3D expects
+  # and divide r_eff by a=0.51 to get rho = r_eff/a (normalized sqrt of toroidal flux)
+  #divide_by = [0.51, 10, 1, 1]
+  divide_by = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+
+[[species]]
+  type = "deuterium"
+  density = {import = true, evolve = false, key = 'n_D'} # will be set by quasineutrality
+  temperature = {import = true, key = 'T_i', evolve = true}
+#  aux_particle_source = { import = true , key = 'G_D'}
+  aux_power_source = { import = true, keys = 'Sp_D' }
+
+
+[[species]]
+  type = "carbon"
+  density = {import = true, evolve = false, key = 'n_C'} # will be set by quasineutrality
+  temperature = {import = true, key = 'T_i', evolve = true}
+#  #aux_particle_source = { import = true , key = 'G_D'}
+  aux_power_source = { import = false, keys = 'Sp_C' }
+
+
+[[species]]
+  type = "electron"
+  density = {import = true, evolve = false, key = 'n_e'}
+  temperature = {import = true, key = 'T_e', evolve = true}
+#  aux_particle_source = { import = true , key = 'G_e'}
+  aux_power_source = { import = true, keys = 'Sp_e' }
+
+
+[geometry]
+  geo_option = "basic"
+  AspectRatio = 1.6
+
+[rescale]
+  a_minor = 0.5
+  Ba = 1.0

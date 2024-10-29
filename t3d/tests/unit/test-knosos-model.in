@@ -1,0 +1,40 @@
+[grid]
+  N_radial = 9
+  rho_edge = 0.7
+  flux_label = 'torflux'
+
+[time]
+  N_steps  = 1
+  dtau     = 2e-3
+  alpha    = 0.5
+
+[model]
+  model = "KNOSOS"          
+  knosos_outputs = "tests/unit/knosos/"
+
+#[[species]]
+#type = "boron"
+#density = {core = 2.7, edge = 0.9, evolve = false}
+#temperature = {core = 21, edge = 4, evolve = false}
+#density_source = { height = 0, width = 0.2, center = 0.5 }
+#pressure_source = { height = 0, width = 0.2, center = 0.5 }
+
+[[species]]
+type = "hydrogen"
+bulk = true
+density = {core = 0.65, edge = 0.57, alpha=1, evolve = false}
+temperature = {core = 2.0, edge = 0.8, evolve = true}
+density_source = { height = 0, width = 0.2, center = 0.5 }
+pressure_source = { height = 0, width = 0.2, center = 0.4 }
+
+[[species]]
+type = "electron"
+density = {core = 0.65, edge = 0.57, alpha=1, evolve = false}
+temperature = {core = 6.7, edge = 0.8, alpha=2, evolve = false}
+density_source = { height = 0, width = 0.2, center = 0.5 }
+pressure_source = { height = 0, width = 0.2, center = 0.5 }
+
+[geometry]
+geo_option = 'vmec'
+geo_file = 'tests/data/wout_w7x.nc'
+compute_surface_areas = true

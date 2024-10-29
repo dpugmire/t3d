@@ -1,0 +1,8 @@
+[grid]
+  N_radial = 9
+  rho_edge = 0.7
+  flux_label = 'torflux'
+
+[geometry]
+  geo_option = "vmec"
+  geo_file = "tests/data/wout_w7x.nc"
