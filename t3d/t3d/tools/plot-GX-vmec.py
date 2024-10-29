@@ -30,11 +30,11 @@ path = "/Users/dpn/proj/gx/3dPlot/tmp/t3d./w7x-gx"
 geo = "wout_w7x.nc"
 
 ## 10.28.24
-path = './w7x-gx'
+path = '../w7x-gx'
 #geo = 'wout_w7x.nc'
 geo = "eq_180920017_w7x_169_wout.nc"
-file1 = './w7x-gx/t05-p0-r6-a0-0.out.nc'
-file2 = './w7x-gx/t05-p0-r6-a1-0.out.nc'
+file1 = '../w7x-gx/t05-p0-r6-a0-0.out.nc'
+file2 = '../w7x-gx/t05-p0-r6-a1-0.out.nc'
 
 N_THETA = 5
 N_ZETA = 12
