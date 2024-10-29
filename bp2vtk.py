@@ -1001,8 +1001,10 @@ def createSrfs(X,Y,Z,L, nTheta, nZeta, nfp, surfaces) :
     return srf
 
 
-fname = 't3d/tests/data/wout_w7x.nc'
-fnameAdios = 't3d/tests/data/wout_w7x.bp'
+fname = './w7x-gx/wout_w7x.nc'
+fnameAdios = './w7x-gx/wout_w7x.bp'
+print(fname)
+print(fnameAdios)
 #ds = readNetcdf(fname)
 f = readADIOS(fnameAdios)
 ntheta = 10
@@ -1066,9 +1068,8 @@ for sIdx in srfSelect :
 print('LEN= ', len(X), X[0].shape)
 
 
-createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid2.vtk', srfSelect)
+createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid.vtk', srfSelect)
 srf = createSrfs(X,Y,Z,vL,  ntheta, nzeta, nfp, srfSelect)
-dumpDS(srf, '/Users/dpn/srf_duplicate.vtk')
 dumpDS(srf, 'srf_duplicate.vtk')
 sys.exit()
 
