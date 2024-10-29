@@ -26,18 +26,8 @@ s_idx = 0  # gx species index
 # VMEC files
 path = "./w7x-case"
 geo = "eq_180920017_w7x_169_wout.nc"
-path = "/Users/dpn/proj/gx/3dPlot/tmp/t3d./w7x-gx"
+path = "./w7x-gx"
 geo = "wout_w7x.nc"
-
-## 10.28.24
-path = './w7x-gx'
-#geo = 'wout_w7x.nc'
-geo = "eq_180920017_w7x_169_wout.nc"
-file1 = './w7x-gx/t05-p0-r6-a0-0.out.nc'
-file2 = './w7x-gx/t05-p0-r6-a1-0.out.nc'
-
-N_THETA = 5
-N_ZETA = 12
 
 # Choose your Plots
 plot_1D_Q_trace = False  # plot the two Q(z) as a function of space, averages second half of time trace
@@ -83,27 +73,12 @@ class FluxTube:
         self.data = data
 
         # heat flux
-        print('Read heat flux: s_idx= ', s_idx)
         time = data.groups['Grids'].variables['time'][:]
-        print(' time.shape= ', time.shape)
-        _Qt = data.groups['Diagnostics'].variables['HeatFlux_st']
-        print('raw Qt.shape= ', '(time, s)',  _Qt.shape)
-        print('  turbulent heat flux in gyroBohm units')
         Qt = data.groups['Diagnostics'].variables['HeatFlux_st'][:,s_idx]
-        print('Qt.shape= ', Qt.shape)
-        #shit()
-        _Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst']
         Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst'][:,s_idx,:]
-        print('raw Qtz.shape= ', '(time, s, theta)', _Qtz.shape)
-        print('  turbulent heat flux in gyroBohm units')
-        print('Qtz.shape= ', Qtz.shape)
         Q_gx = np.mean(Qtz[int(len(time)/2):,:], axis=0)
         jacobian = data.groups['Geometry'].variables['jacobian'][:]
-        _jacobian = data.groups['Geometry'].variables['jacobian']
-        print('raw jacobian.shape= (theta)', _jacobian.shape)
         grho = data.groups['Geometry'].variables['grho'][:]
-        _grho = data.groups['Geometry'].variables['grho']
-        print('raw grho.shape= (theta)', _grho.shape)
         fluxDenom = np.sum(jacobian*grho)
 
         # to be interpolated
@@ -200,10 +175,7 @@ class FluxTube:
 
 
 # main function
-fname = f"{path}/{geo}"
-print('reading: ', fname)
 vmec = VmecReader(f"{path}/{geo}")
-print('reading flux: ', file1, file2)
 f1 = FluxTube(file1)
 f2 = FluxTube(file2)
 
@@ -285,9 +257,6 @@ if plot_VmecGX_unfolded:
 # load GX data onto VMEC surfaces
 f1.getXYZ(vmec,full_torus=False)
 f2.getXYZ(vmec,full_torus=False)
-print('f1/f2.Q_gx.shape= ', f1.Q_gx.shape, f2.Q_gx.shape)
-print('f1/f2.zeta_n.shape= ', f1.zeta_n.shape, f2.zeta_n.shape)
-print('f1/f2.theta_v.shape= ', f1.theta_v.shape, f2.theta_v.shape)
 
 zeta = np.concatenate([f1.zeta_n, f2.zeta_n])
 z0 = np.pi/vmec.nfp
@@ -297,7 +266,7 @@ theta = np.concatenate([f1.theta_v, f2.theta_v])
 Q_gx = np.concatenate([f1.Q_gx,f2.Q_gx])  # only for plotting, not for computation
 Q = np.concatenate([f1.Q,f2.Q])  # Q_gx * sum1D( norm ), norm = jacobian * grho
 norm = np.concatenate([f1.norm,f2.norm])  # jacobian * grad rho
-print('********************************')
+
 
 def pad(data,zeta,theta, threshold=0.8):
     '''
@@ -326,20 +295,16 @@ def pad(data,zeta,theta, threshold=0.8):
 Q_gx2, z2, t2 = pad(Q_gx,zeta,theta)
 Q2, z2, t2 = pad(Q,zeta,theta)
 N2, z2, t2 = pad(norm,zeta,theta)
-print('Q_gx2.shape= ', Q_gx2.shape)
-print('Q2.shape= ', Q2.shape)
-print('N2.shape= ', N2.shape)
 
 #  interpolation grid
-Ntheta = N_THETA
-Nzeta = N_ZETA
+Ntheta = 25
+Nzeta = 15
 tax = np.linspace(-np.pi,np.pi,Ntheta)
 zax = np.linspace(-z0,z0,Nzeta)
 
 Z,T = np.meshgrid(zax,tax)
 Qsamp = griddata((z2,t2), Q2, (Z,T), method='linear')
 Nsamp = griddata((z2,t2), N2, (Z,T), method='linear')
-print('Qsamp.shape= ', Qsamp.shape)
 area = 4*np.pi**2/vmec.nfp
 dA = area / (Nzeta-1) / (Ntheta-1)
 
@@ -513,13 +478,9 @@ if plot_3D_Q_surface:
 
 if mayavi_3D_Q:
     # plot mesh on surf
-    #DRP
-    #Qsamp.T = 12,5 array.
-    qst = Qsamp.T
-    print('Q.T.shape= ', Qsamp.T.shape)
-    srf_idx = 43
-    print('VMEC(zeta,theta, nfp): ', Nzeta, Ntheta, vmec.nfp)
-    X,Y,Z = vmec.getSurfaceMesh(Nzeta=Nzeta, Ntheta=Ntheta,s_idx=srf_idx,zeta_zero_mid=True, theta_zero_mid=True, full_torus=True)
+
+    s = 43
+    X,Y,Z = vmec.getSurfaceMesh(Nzeta=Nzeta, Ntheta=Ntheta,s_idx=s,zeta_zero_mid=True, theta_zero_mid=True, full_torus=True)
 
     # apply stellarator symmetry to Q
     zn = np.linspace(0,np.pi*2,vmec.nfp,endpoint=False)
@@ -528,8 +489,6 @@ if mayavi_3D_Q:
         Q_n.append(Qsamp.T)
 
     Q = np.concatenate(Q_n,axis=0) / N_int * area
-    print('Q.shape ', Q.shape)
-    #shit()
 
     fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
     mesh = mlab.mesh(X, Y, Z, scalars=Q, colormap='hot')
