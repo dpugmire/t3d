@@ -246,11 +246,11 @@ Q_n = []
 for z in zn:
     Q_n.append(Qsamp.T)
 
-Q = np.concatenate(Q_n,axis=0) / N_int * area
+Q_PLOT = np.concatenate(Q_n,axis=0) / N_int * area
 print('Q.shape ', Q.shape)
 
 fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
-mesh = mlab.mesh(X, Y, Z, scalars=Q, colormap='hot')
+mesh = mlab.mesh(X, Y, Z, scalars=Q_PLOT, colormap='hot')
 fig.scene.show_axes = True
 
 legend = mesh.module_manager.scalar_lut_manager
