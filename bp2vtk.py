@@ -4,6 +4,8 @@ from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.optimize import root_scalar
+from scipy.interpolate import interp1d, griddata
 import vtk, sys, math
 
 def example2D(x,y,z) :
@@ -1000,9 +1002,162 @@ def createSrfs(X,Y,Z,L, nTheta, nZeta, nfp, surfaces) :
     #srf = cleaner.GetOutput()
     return srf
 
+def getLambda(xm, xn, lmns, theta, zeta=0, s_idx=100):
+        '''
+        from (theta_v, zeta_v) compute lambda
+        on surface s_idx
 
-fname = './w7x-gx/wout_w7x.nc'
-fnameAdios = './w7x-gx/wout_w7x.bp'
+        assume both theta,zeta are scalars
+        in vmec input coordiantes
+        ==
+        can I make this flexible for vec theta, vec zeta, or both?
+        '''
+
+        # sum over Fourier modes
+        x = xm*theta - xn*zeta
+        L = np.sum(lmns[s_idx] * np.sin(x))
+        return L
+
+def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
+        '''
+        This function finds the theta
+        that satisfies theta* for a given zeta
+        and surface s_idx.
+
+        It does so using root finding
+        on an interpolated function
+        with N_interp points.
+        '''
+
+        # define theta range to straddle 0
+        tax = np.linspace(-np.pi, np.pi, N_interp)
+
+        # Given: theta* = theta + lambda
+        # compute: f = RHS - theta*
+        RHS = [t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx) for t in tax]
+        f = np.array(RHS) - thetaStar
+
+        # check for wrap around
+        offset = 0
+        while np.min(f) > 0:
+            f = f - np.pi
+            offset = offset - np.pi
+        while np.max(f) < 0:
+            f = f + np.pi
+            offset = offset + np.pi
+
+        # find root from interpolated function
+        func = interp1d(tax, f)
+        theta = root_scalar(func, method='toms748', bracket=(-np.pi, np.pi))['root']
+        return theta - offset
+
+def pad(data,zeta,theta, z0, threshold=0.8):
+    '''
+    Use periodicity to add boundary data before interpolation
+    '''
+
+    # pad theta
+    t_max = np.pi * threshold
+    arg1 = np.argwhere(theta > t_max)[:,0]
+    arg2 = np.argwhere(theta < -t_max)[:,0]
+    t1 = np.concatenate([theta, theta[arg1]-2*np.pi, theta[arg2]+2*np.pi])
+    z1 = np.concatenate([zeta, zeta[arg1], zeta[arg2]])
+    Q1 = np.concatenate([data, data[arg1], data[arg2]])
+    print('pad theta:')
+    print('  theta/zeta.shape= ', theta.shape, zeta.shape)
+    print('  arg1/arg2.shape', arg1.shape, arg2.shape)
+    print('     t1/z1.shape= ', t1.shape, z1.shape)
+
+    # pad zeta
+    z_max = z0 * threshold
+    arg1 = np.argwhere(z1 > z_max)[:,0]
+    arg2 = np.argwhere(z1 < -z_max)[:,0]
+    t2 = np.concatenate([t1, t1[arg1], t1[arg2]])
+    z2 = np.concatenate([z1, z1[arg1]-2*z0, z1[arg2]+2*z0])
+    Q2 = np.concatenate([Q1, Q1[arg1], Q1[arg2]])
+    print('pad zeta:')
+    print('  theta/zeta.shape= ', t1.shape, z1.shape)
+    print('  arg1/arg2.shape', arg1.shape, arg2.shape)
+    print('     t2/z2.shape= ', t2.shape, z2.shape)
+
+    return Q2,z2,t2
+
+def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1) :
+    def calcZetaTheta(f, srfIdx, xm, xn, lmns) :
+        theta = f.read('Grids/theta')
+        iota = 1.0 / f.read('Geometry/q')
+        zeta_center = f.read('Geometry/zeta_center')
+        alpha = -iota*zeta_center
+        zeta = (theta - alpha)/iota
+
+        thetaStar = theta
+        N = len(zeta)
+        theta_v = np.zeros(N)
+        for j in range(N) :
+            theta_v[j] = invertTheta(xm, xn, lmns, thetaStar[j], zeta[j], s_idx=srfIdx)
+        #theta_v = np.array([vmec.invertTheta(thetaStar[j], zeta=zeta[j],s_idx=srfIdx) for j in np.arange(N)])
+
+        return (zeta,theta_v)
+
+    specieIdx = 0
+    time0 = out0.read('Grids/time')
+    time1 = out1.read('Grids/time')
+
+    #Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst'][:,s_idx,:]
+    #Qtz0 = flux0.read('HeatFlux_zst')
+    #Qtz1 = flux1.read('HeatFlux_zst')
+    Qtz0 = out0.read('Diagnostics/HeatFlux_zst')
+    Qtz1 = out1.read('Diagnostics/HeatFlux_zst')
+    Qtz0 = Qtz0[:,specieIdx,:]
+    Qtz1 = Qtz1[:,specieIdx,:]
+    Q_gx0 = np.mean(Qtz0[int(len(time0)/2):,:], axis=0)
+    Q_gx1 = np.mean(Qtz1[int(len(time1)/2):,:], axis=0)
+    print('Qtz0/1.shape= ', Qtz0.shape, Qtz1.shape)
+    print('Q_gx0/1.shape= ', Q_gx0.shape, Q_gx1.shape)
+    jacobian0 = out0.read('Geometry/jacobian')
+    jacobian1 = out1.read('Geometry/jacobian')
+    grho0 = out0.read('Geometry/grho')
+    grho1 = out1.read('Geometry/grho')
+    fluxDenom0 = np.sum(jacobian0*grho0)
+    fluxDenom1 = np.sum(jacobian1*grho1)
+
+    Q0 = Q_gx0*fluxDenom0
+    Q1 = Q_gx1*fluxDenom1
+    zeta0,theta0 = calcZetaTheta(out0, srfIdx, xm, xn, lmns)
+    zeta1,theta1 = calcZetaTheta(out1, srfIdx, xm,xn,lmns)
+
+    zeta_n0 = zeta0 % (2*np.pi/nfp)
+    zeta_n1 = zeta1 % (2*np.pi/nfp)
+
+    zeta = np.concatenate([zeta_n0, zeta_n1])
+    z0 = np.pi/nfp
+    zeta = (zeta + z0) % (2*z0) - z0
+    theta = np.concatenate([theta0, theta1])
+
+    Q = np.concatenate([Q0,Q1])
+
+    #Q_gx2,z2,t2 = pad(Q_gx, zeta, theta, z0)
+    Q2,z2,t2 = pad(Q, zeta, theta, z0)
+
+
+    tax = np.linspace(-np.pi,np.pi, ntheta)
+    zax = np.linspace(-z0,z0, nzeta)
+    Z,T = np.meshgrid(zax,tax)
+    Qsamp = griddata((z2,t2), Q2, (Z,T), method='linear')
+    #Nsamp = griddata((z2,t2), N2, (Z,T), method='linear')
+
+    print('hello')
+    return srf
+
+
+
+fname = '/Users/dpn/proj/gx/3dPlot/t3d/w7x-gx/wout_w7x.nc'
+fnameAdios = '/Users/dpn/proj/gx/3dPlot/t3d/w7x-gx/wout_w7x.bp'
+out0 = '/Users/dpn/proj/gx/3dPlot/t3d/NERSC/t10-p0-r6-0.out.bp'
+out1 = '/Users/dpn/proj/gx/3dPlot/t3d/NERSC/t10-p0-r6-1.out.bp'
+flux0 = '/Users/dpn/proj/gx/3dPlot/t3d/NERSC/t10-p0-r6-0.GK.fluxes.bp'
+flux1 = '/Users/dpn/proj/gx/3dPlot/t3d/NERSC/t10-p0-r6-1.GK.fluxes.bp'
+
 print(fname)
 print(fnameAdios)
 #ds = readNetcdf(fname)
@@ -1054,7 +1209,7 @@ if False :
 ##Read in multiple surfaces
 X,Y,Z,vR,vZ,vL = ([],[],[],[],[],[])
 nfp = -1
-srfSelect = [151]
+srfSelect = [43]
 for sIdx in srfSelect :
     out = readVarsSIMP(f, ntheta, nzeta, sIdx)
     X.append(out[0])
@@ -1065,42 +1220,18 @@ for sIdx in srfSelect :
     vL.append(out[5])
     nfp = out[6]
 
-print('LEN= ', len(X), X[0].shape)
-
-
+xm = f.read('xm').shape[0]
+xn = f.read('xn').shape[0]
+lmns = f.read('lmns')
 createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid.vtk', srfSelect)
 srf = createSrfs(X,Y,Z,vL,  ntheta, nzeta, nfp, srfSelect)
+#dumpDS(srf, 'srf_duplicate.vtk')
+
+srf = addQ(srf, xm, xn, lmns, srfSelect[0], ntheta, nzeta, nfp, readADIOS(flux0), readADIOS(flux1), readADIOS(out0), readADIOS(out1))
+
 dumpDS(srf, 'srf_duplicate.vtk')
+
 sys.exit()
 
-
-
-createGrid(ntheta, nzeta, nfp, X,Y,Z, [vR, vZ, vL], ['R', 'Z', 'L'], 'grid.vtk')
-
-srf = createSrf(X,Y,Z,vL,  ntheta, nzeta, 5)
-dumpDS(srf, 'srf.vtk')
-sys.exit()
-
-if False :
-    print('meow')
-    _, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    _ = ax.plot_surface(X,Y,Z, color='c')
-    ax.set_aspect('equal')
-    plt.show()
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-print('X: ', X.shape)
-print('X: ', X.shape)
-srf = ax.plot_trisurf(X,Y,Z)
-ax.set_aspect('equal')
-plt.show()
-
-
-
-#x,y,z = createxyz()
-
-#example2D(x,y,z)
-#example3D(x,y,z)
 
 
