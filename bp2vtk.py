@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import root_scalar
 from scipy.interpolate import interp1d, griddata
 import vtk, sys, math
+from vtk.util.numpy_support import numpy_to_vtk
 
 def example2D(x,y,z) :
     print('create a rectilinear grid: X,Y')
@@ -1082,49 +1083,38 @@ def pad(data,zeta,theta, z0, threshold=0.8):
 
     return Q2,z2,t2
 
+def init(f, specieIdx, srfIdx, lmns) :
+    time = f.read('Grids/time')
+    Qtz = f.read('Diagnostics/HeatFlux_zst')
+    scale = f.read('Geometry/theta_scale')
+    theta = f.read('Grids/theta')[:] * scale
+    iota = 1.0 / f.read('Geometry/q')
+    zeta_center = f.read('Geometry/zeta_center')
+    alpha = -iota*zeta_center
+    zeta = (theta - alpha)/iota
+
+    thetaStar = theta
+    N = len(zeta)
+    theta_v = np.zeros(N)
+    for j in range(N) :
+        theta_v[j] = invertTheta(xm, xn, lmns, thetaStar[j], zeta[j], s_idx=srfIdx)
+
+    Qtz = f.read('Diagnostics/HeatFlux_zst')[:,specieIdx,:]
+    Q_gx = np.mean(Qtz[int(len(time)/2):,:], axis=0)
+    jacobian = f.read('Geometry/jacobian')[:]
+    grho = f.read('Geometry/grho')[:]
+    fluxDenom = np.sum(jacobian*grho)
+
+    Q = Q_gx*fluxDenom
+    norm = jacobian*grho
+
+    return (zeta, theta_v, Q, Q_gx, norm)
+
 def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1) :
-    def calcZetaTheta(f, srfIdx, xm, xn, lmns) :
-        theta = f.read('Grids/theta')
-        iota = 1.0 / f.read('Geometry/q')
-        zeta_center = f.read('Geometry/zeta_center')
-        alpha = -iota*zeta_center
-        zeta = (theta - alpha)/iota
-
-        thetaStar = theta
-        N = len(zeta)
-        theta_v = np.zeros(N)
-        for j in range(N) :
-            theta_v[j] = invertTheta(xm, xn, lmns, thetaStar[j], zeta[j], s_idx=srfIdx)
-        #theta_v = np.array([vmec.invertTheta(thetaStar[j], zeta=zeta[j],s_idx=srfIdx) for j in np.arange(N)])
-
-        return (zeta,theta_v)
-
     specieIdx = 0
-    time0 = out0.read('Grids/time')
-    time1 = out1.read('Grids/time')
 
-    #Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst'][:,s_idx,:]
-    #Qtz0 = flux0.read('HeatFlux_zst')
-    #Qtz1 = flux1.read('HeatFlux_zst')
-    Qtz0 = out0.read('Diagnostics/HeatFlux_zst')
-    Qtz1 = out1.read('Diagnostics/HeatFlux_zst')
-    Qtz0 = Qtz0[:,specieIdx,:]
-    Qtz1 = Qtz1[:,specieIdx,:]
-    Q_gx0 = np.mean(Qtz0[int(len(time0)/2):,:], axis=0)
-    Q_gx1 = np.mean(Qtz1[int(len(time1)/2):,:], axis=0)
-    print('Qtz0/1.shape= ', Qtz0.shape, Qtz1.shape)
-    print('Q_gx0/1.shape= ', Q_gx0.shape, Q_gx1.shape)
-    jacobian0 = out0.read('Geometry/jacobian')
-    jacobian1 = out1.read('Geometry/jacobian')
-    grho0 = out0.read('Geometry/grho')
-    grho1 = out1.read('Geometry/grho')
-    fluxDenom0 = np.sum(jacobian0*grho0)
-    fluxDenom1 = np.sum(jacobian1*grho1)
-
-    Q0 = Q_gx0*fluxDenom0
-    Q1 = Q_gx1*fluxDenom1
-    zeta0,theta0 = calcZetaTheta(out0, srfIdx, xm, xn, lmns)
-    zeta1,theta1 = calcZetaTheta(out1, srfIdx, xm,xn,lmns)
+    (zeta0, theta0, Q0, Q_gx0, norm0) = init(out0, specieIdx, srfIdx, lmns)
+    (zeta1, theta1, Q1, Q_gx1, norm1) = init(out0, specieIdx, srfIdx, lmns)
 
     zeta_n0 = zeta0 % (2*np.pi/nfp)
     zeta_n1 = zeta1 % (2*np.pi/nfp)
@@ -1135,16 +1125,40 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1
     theta = np.concatenate([theta0, theta1])
 
     Q = np.concatenate([Q0,Q1])
+    Q_gx = np.concatenate([Q_gx0, Q_gx1])
+    norm = np.concatenate([norm0, norm1])
 
-    #Q_gx2,z2,t2 = pad(Q_gx, zeta, theta, z0)
-    Q2,z2,t2 = pad(Q, zeta, theta, z0)
-
+    Q_gx2, z2, t2 = pad(Q_gx,zeta,theta, z0)
+    Q2, z2, t2 = pad(Q,zeta,theta, z0)
+    N2, z2, t2 = pad(norm,zeta,theta, z0)
 
     tax = np.linspace(-np.pi,np.pi, ntheta)
     zax = np.linspace(-z0,z0, nzeta)
     Z,T = np.meshgrid(zax,tax)
     Qsamp = griddata((z2,t2), Q2, (Z,T), method='linear')
-    #Nsamp = griddata((z2,t2), N2, (Z,T), method='linear')
+    Nsamp = griddata((z2,t2), N2, (Z,T), method='linear')
+    print('Qsamp.shape= ', Qsamp.shape)
+    area = 4*np.pi**2/nfp
+    dA = area / (nzeta-1) / (ntheta-1)
+
+    # integrate, but exclude the endpoint
+    N_int = np.sum(Nsamp[:-1,:-1]) * dA
+    Q_int = np.sum(Qsamp[:-1,:-1])/N_int * dA
+
+    # apply stellarator symmetry to Q
+    zn = np.linspace(0,np.pi*2,nfp,endpoint=False)
+    Q_n = []
+    for z in zn:
+        Q_n.append(Qsamp.T)
+
+    Q_PLOT = np.concatenate(Q_n,axis=0) / N_int * area
+    q1d = Q_PLOT.flatten()
+    print(Q_PLOT.shape)
+    print('srf: ', srf.GetNumberOfPoints(), srf.GetNumberOfCells())
+    arr = vtk.vtkFloatArray()
+    arr = vtk.util.numpy_support.numpy_to_vtk(q1d, deep=True, array_type=vtk.VTK_FLOAT)
+    arr.SetName('QStuff')
+    srf.GetPointData().AddArray(arr)
 
     print('hello')
     return srf
@@ -1167,8 +1181,8 @@ nzeta = 20
 ntheta = 20
 nzeta = 50
 ## DRP
-ntheta = 50
-nzeta = 50
+ntheta = 25
+nzeta = 25
 
 #X,Y,Z,vR,vZ,vL = createVTK(ds, ntheta, nzeta)
 
