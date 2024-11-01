@@ -59,8 +59,6 @@ class FluxTube:
         scale = data.groups['Geometry'].variables['theta_scale'][:]
         theta = data.groups['Grids'].variables['theta'][:]*scale
         iota = 1/data.groups['Geometry'].variables['q'][:]
-        dz = (theta[1]-theta[0])/scale
-        Lz = len(theta) * dz
 
         zeta_center = data.groups['Geometry'].variables['zeta_center'][:]
         alpha = -iota*zeta_center
@@ -70,32 +68,19 @@ class FluxTube:
         self.iota = iota
         self.zeta = zeta
         self.theta = theta
-        self.dz = dz
-        self.Lz = Lz
         self.data = data
 
         # heat flux
         print('Read heat flux: s_idx= ', s_idx)
         time = data.groups['Grids'].variables['time'][:]
         print(' time.shape= ', time.shape)
-        _Qt = data.groups['Diagnostics'].variables['HeatFlux_st']
-        print('raw Qt.shape= ', '(time, s)',  _Qt.shape)
-        print('  turbulent heat flux in gyroBohm units')
-        Qt = data.groups['Diagnostics'].variables['HeatFlux_st'][:,s_idx]
-        print('Qt.shape= ', Qt.shape)
-        #shit()
-        _Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst']
+
         Qtz = data.groups['Diagnostics'].variables['HeatFlux_zst'][:,s_idx,:]
-        print('raw Qtz.shape= ', '(time, s, theta)', _Qtz.shape)
         print('  turbulent heat flux in gyroBohm units')
         print('Qtz.shape= ', Qtz.shape)
         Q_gx = np.mean(Qtz[int(len(time)/2):,:], axis=0)
         jacobian = data.groups['Geometry'].variables['jacobian'][:]
-        _jacobian = data.groups['Geometry'].variables['jacobian']
-        print('raw jacobian.shape= (theta)', _jacobian.shape)
         grho = data.groups['Geometry'].variables['grho'][:]
-        _grho = data.groups['Geometry'].variables['grho']
-        print('raw grho.shape= (theta)', _grho.shape)
         fluxDenom = np.sum(jacobian*grho)
 
         # to be interpolated
@@ -103,11 +88,8 @@ class FluxTube:
         self.norm = jacobian*grho
         self.grho = grho
         self.Q_gx = Q_gx
-        self.Qt = Qt
         self.time = time
-        self.Q_plot1d = Q_gx * Lz / dz
         print('self.Q.shape= ', self.Q.shape)
-        print('self.Qt.shape= ', self.Qt.shape)
         print('self.Q_gx.shape= ', self.Q_gx.shape)
 
     def getXYZ(self,vmec, psiN=0.434, full_torus=True):
@@ -160,7 +142,6 @@ def pad(data,zeta,theta, threshold=0.8):
     print('  theta/zeta.shape= ', t1.shape, z1.shape)
     print('  arg1/arg2.shape', arg1.shape, arg2.shape)
     print('     t2/z2.shape= ', t2.shape, z2.shape)
-
 
     return Q2,z2,t2
 
@@ -225,10 +206,6 @@ dA = area / (Nzeta-1) / (Ntheta-1)
 # integrate, but exclude the endpoint
 N_int = np.sum(Nsamp[:-1,:-1]) * dA
 Q_int = np.sum(Qsamp[:-1,:-1])/N_int * dA
-
-#Q_plot = Qsamp / area
-# such that np.mean(Q_plot) == Q_int
-
 
 
 # plot mesh on surf
