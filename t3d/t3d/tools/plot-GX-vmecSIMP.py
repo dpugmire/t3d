@@ -48,23 +48,6 @@ file2 = '../w7x-gx/t05-p0-r6-a1-0.out.nc'
 N_THETA = 25
 N_ZETA = 25
 
-# Choose your Plots
-plot_1D_Q_trace = False  # plot the two Q(z) as a function of space, averages second half of time trace
-plot_1D_Qt = False       # plot the two Q(t) as a function of time
-
-plot_2D_Q_contour = False      # 2D contour map from interpolated points
-plot_2D_Q_scatter_a0 = False   # makes separated plots for both a0 and a1
-plot_GX_interpolation = False  # plot interpolation output
-
-# Warning: these 3D plots require mayavi
-plot_VmecGX_unfolded = False  # plot GX flux tube over VMEC surface
-plot_VmecGX_folded = False    # plot GX flux tube over VMEC surface, and fold into single field period
-
-mayavi_3D_Q = True         # mayavi plot of Q on full stellarator
-plot_3D_Q_surface = False  # make a 3D mountain plot on a 2D domain
-save_mayavi_video = False  # save frames for GIF
-
-
 class FluxTube:
     '''
     Reads GX data
@@ -130,71 +113,24 @@ class FluxTube:
     def getXYZ(self,vmec, psiN=0.434, full_torus=True):
 
         zeta = self.zeta
-        alpha = self.alpha
-        iota = self.iota
+        #alpha = self.alpha
+        #iota = self.iota
 
         # get surface
         s = np.argmin(np.abs(vmec.s - psiN))
-        i = np.argmin(np.abs(vmec.iotaf - iota))
+        #i = np.argmin(np.abs(vmec.iotaf - iota))
 
         thetaStar = self.theta
         N = len(zeta)
         theta = np.array([vmec.invertTheta(thetaStar[j], zeta=zeta[j],s_idx=s) for j in np.arange(N)])
 
-        # compute m and n modes
-        cos = []
-        sin = []
-        for j in np.arange(N):
-            x = vmec.xm*theta[j] - vmec.xn*zeta[j]
-            cos.append(np.cos(x))
-            sin.append(np.sin(x))
-
-        # sum of Fourier amplitudes
-        R = np.sum(vmec.rmnc[s] * cos, axis=-1)
-        Z = np.sum(vmec.zmns[s] * sin, axis=-1)
-
         # wrap around a single field period
         zeta_n = zeta % (2*np.pi/vmec.nfp)
-
-        if full_torus:
-            X = R * np.cos(zeta)
-            Y = R * np.sin(zeta)
-        else:
-            X = R * np.cos(zeta_n)
-            Y = R * np.sin(zeta_n)
-
         self.zeta_n = zeta_n
         self.theta_v = theta
+
+        X,Y,Z = (None, None, None)
         return X,Y,Z
-
-
-# main function
-fname = f"{path}/{geo}"
-print('reading: ', fname)
-vmec = VmecReader(f"{path}/{geo}")
-print('reading flux: ', file1, file2)
-f1 = FluxTube(file1)
-f2 = FluxTube(file2)
-
-# DRP
-# load GX data onto VMEC surfaces
-f1.getXYZ(vmec,full_torus=False)
-f2.getXYZ(vmec,full_torus=False)
-print('f1/f2.Q_gx.shape= ', f1.Q_gx.shape, f2.Q_gx.shape)
-print('f1/f2.zeta_n.shape= ', f1.zeta_n.shape, f2.zeta_n.shape)
-print('f1/f2.theta_v.shape= ', f1.theta_v.shape, f2.theta_v.shape)
-
-zeta = np.concatenate([f1.zeta_n, f2.zeta_n])
-z0 = np.pi/vmec.nfp
-zeta = (zeta + z0) % (2*z0) - z0
-theta = np.concatenate([f1.theta_v, f2.theta_v])
-print('theta:', theta.size)
-print(theta)
-
-Q_gx = np.concatenate([f1.Q_gx,f2.Q_gx])  # only for plotting, not for computation
-Q = np.concatenate([f1.Q,f2.Q])  # Q_gx * sum1D( norm ), norm = jacobian * grho
-norm = np.concatenate([f1.norm,f2.norm])  # jacobian * grad rho
-print('********************************')
 
 def pad(data,zeta,theta, threshold=0.8):
     '''
@@ -228,14 +164,45 @@ def pad(data,zeta,theta, threshold=0.8):
 
     return Q2,z2,t2
 
+
+# main function
+fname = f"{path}/{geo}"
+print('reading: ', fname)
+vmec = VmecReader(f"{path}/{geo}")
+print('reading flux: ', file1, file2)
+f1 = FluxTube(file1)
+f2 = FluxTube(file2)
+
+# DRP
+# load GX data onto VMEC surfaces
+f1.getXYZ(vmec,full_torus=False)
+f2.getXYZ(vmec,full_torus=False)
+print('f1/f2.Q_gx.shape= ', f1.Q_gx.shape, f2.Q_gx.shape)
+print('f1/f2.zeta_n.shape= ', f1.zeta_n.shape, f2.zeta_n.shape)
+print('f1/f2.theta_v.shape= ', f1.theta_v.shape, f2.theta_v.shape)
+
+zeta = np.concatenate([f1.zeta_n, f2.zeta_n])
+z0 = np.pi/vmec.nfp
+zeta = (zeta + z0) % (2*z0) - z0
+theta = np.concatenate([f1.theta_v, f2.theta_v])
+print('theta:', theta.size)
+print(theta)
+
+Q_gx = np.concatenate([f1.Q_gx,f2.Q_gx])  # only for plotting, not for computation
+Q = np.concatenate([f1.Q,f2.Q])  # Q_gx * sum1D( norm ), norm = jacobian * grho
+norm = np.concatenate([f1.norm,f2.norm])  # jacobian * grad rho
+print('********************************')
+
+
+
 ## Q_gx.shape = 246.  find where z1 > z_max and z1 < -z_max (z_max = z0*threshold)
 Q_gx2, z2, t2 = pad(Q_gx,zeta,theta)
 Q2, z2, t2 = pad(Q,zeta,theta)
 N2, z2, t2 = pad(norm,zeta,theta)
-print('Pad(): Q_gx/zeta/theta.shape= ', Q_gx.shape, zeta.shape, theta.shape)
-print('Q_gx2.shape= ', Q_gx2.shape)
-print('Q2.shape= ', Q2.shape)
-print('N2.shape= ', N2.shape)
+#print('Pad(): Q_gx/zeta/theta.shape= ', Q_gx.shape, zeta.shape, theta.shape)
+#print('Q_gx2.shape= ', Q_gx2.shape)
+#print('Q2.shape= ', Q2.shape)
+#print('N2.shape= ', N2.shape)
 
 #  interpolation grid
 Ntheta = N_THETA
@@ -259,7 +226,7 @@ dA = area / (Nzeta-1) / (Ntheta-1)
 N_int = np.sum(Nsamp[:-1,:-1]) * dA
 Q_int = np.sum(Qsamp[:-1,:-1])/N_int * dA
 
-Q_plot = Qsamp / area
+#Q_plot = Qsamp / area
 # such that np.mean(Q_plot) == Q_int
 
 
@@ -281,7 +248,6 @@ for z in zn:
 
 Q = np.concatenate(Q_n,axis=0) / N_int * area
 print('Q.shape ', Q.shape)
-#shit()
 
 fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
 mesh = mlab.mesh(X, Y, Z, scalars=Q, colormap='hot')
