@@ -137,52 +137,9 @@ class FluxTube:
         s = np.argmin(np.abs(vmec.s - psiN))
         i = np.argmin(np.abs(vmec.iotaf - iota))
 
-        if False:
-            '''
-            this plot debugs a potential mismatch between
-            iota-vmec iota-gx and psiN-gx
-            '''
-            fig,axs = plt.subplots(1,1)
-            arr = np.arange(vmec.ns)
-            axs.plot(arr,vmec.s,label='psi-vmec')
-            axs.plot(arr,vmec.iotaf,label='iota-vmec')
-
-            axs.axhline(psiN, color='C0', ls='--', label=f"psi_Noah = {psiN}")
-            axs.axhline(iota, color='C1', ls='--', label=f"iota_GX = {iota:.3f}")
-            axs.axvline(s, color='C0', ls='--')
-            axs.axvline(i, color='C1', ls=':')
-
-            axs.grid()
-            axs.legend()
-            axs.set_title(vmec.filename)
-            axs.set_xlabel("surface index")
-            plt.show()
-
         thetaStar = self.theta
         N = len(zeta)
         theta = np.array([vmec.invertTheta(thetaStar[j], zeta=zeta[j],s_idx=s) for j in np.arange(N)])
-
-        if False:
-            '''
-            this plot shows theta vs theta*
-            '''
-            fig,axs = plt.subplots(1,2,figsize=(9,5))
-            axs[0].scatter(zeta,thetaStar,label='theta*')
-            axs[0].scatter(zeta,theta,label='theta')
-            axs[0].grid()
-            axs[0].legend()
-            axs[0].set_xlabel('zeta GX')
-            axs[0].set_ylabel('theta GX')
-
-            zp = zeta % (np.pi*2/vmec.nfp)
-            tp = theta % (np.pi*2) - np.pi
-            tsp = thetaStar % (np.pi*2) - np.pi
-            axs[1].scatter(zp,tsp,label='theta*')
-            axs[1].scatter(zp,tp,label='theta')
-            axs[1].grid()
-            axs[1].legend()
-            axs[1].set_xlabel('zeta')
-            plt.show()
 
         # compute m and n modes
         cos = []
@@ -307,77 +264,34 @@ Q_plot = Qsamp / area
 
 
 
-if mayavi_3D_Q:
-    # plot mesh on surf
-    #DRP
-    #Qsamp.T = 12,5 array.
-    qst = Qsamp.T
-    print('Q.T.shape= ', Qsamp.T.shape)
-    srf_idx = 43
-    print('VMEC(zeta,theta, nfp): ', Nzeta, Ntheta, vmec.nfp)
-    X,Y,Z = vmec.getSurfaceMesh(Nzeta=Nzeta, Ntheta=Ntheta,s_idx=srf_idx,zeta_zero_mid=True, theta_zero_mid=True, full_torus=True)
+# plot mesh on surf
+#DRP
+#Qsamp.T = 12,5 array.
+qst = Qsamp.T
+print('Q.T.shape= ', Qsamp.T.shape)
+srf_idx = 43
+print('VMEC(zeta,theta, nfp): ', Nzeta, Ntheta, vmec.nfp)
+X,Y,Z = vmec.getSurfaceMesh(Nzeta=Nzeta, Ntheta=Ntheta,s_idx=srf_idx,zeta_zero_mid=True, theta_zero_mid=True, full_torus=True)
 
-    # apply stellarator symmetry to Q
-    zn = np.linspace(0,np.pi*2,vmec.nfp,endpoint=False)
-    Q_n = []
-    for z in zn:
-        Q_n.append(Qsamp.T)
+# apply stellarator symmetry to Q
+zn = np.linspace(0,np.pi*2,vmec.nfp,endpoint=False)
+Q_n = []
+for z in zn:
+    Q_n.append(Qsamp.T)
 
-    Q = np.concatenate(Q_n,axis=0) / N_int * area
-    print('Q.shape ', Q.shape)
-    #shit()
+Q = np.concatenate(Q_n,axis=0) / N_int * area
+print('Q.shape ', Q.shape)
+#shit()
 
-    fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
-    mesh = mlab.mesh(X, Y, Z, scalars=Q, colormap='hot')
-    fig.scene.show_axes = True
+fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
+mesh = mlab.mesh(X, Y, Z, scalars=Q, colormap='hot')
+fig.scene.show_axes = True
 
-    legend = mesh.module_manager.scalar_lut_manager
-    legend.show_scalar_bar = True
-    legend.scalar_bar.title = 'Q/Qgb'
-    # legend.data_range=[0,3]
-    legend.number_of_labels = 5
+legend = mesh.module_manager.scalar_lut_manager
+legend.show_scalar_bar = True
+legend.scalar_bar.title = 'Q/Qgb'
+# legend.data_range=[0,3]
+legend.number_of_labels = 5
 
-    if save_mayavi_video:
-        mlab.view(azimuth=0, elevation=90, distance=25)
 
-        m1 = mesh
-        outpath = "Qgx-gif"
-
-        @mlab.animate(delay=10, ui=True)
-        def anim():
-
-            t = 0
-
-            # loop through changing the z perspective by 1 degree
-            for j in range(180):
-                m1.actor.actor.rotate_wxyz(1,0,0,1)
-                mlab.savefig(filename=f'{outpath}/{t:04d}.png', magnification=1)
-                t += 1
-                yield
-
-            # loop through changing the y perspective by 1 degree
-            for j in range(180):
-                m1.actor.actor.rotate_wxyz(1,0,1,0)
-                mlab.savefig(filename=f'{outpath}/{t:04d}.png', magnification=1)
-                t += 1
-                yield
-
-            # loop through changing the z perspective by 1 degree
-            for j in range(180):
-                m1.actor.actor.rotate_wxyz(1,0,0,1)
-                mlab.savefig(filename=f'{outpath}/{t:04d}.png', magnification=1)
-                t += 1
-                yield
-
-            # loop through changing the y perspective by 1 degree
-            for j in range(180):
-                m1.actor.actor.rotate_wxyz(1,0,1,0)
-                mlab.savefig(filename=f'{outpath}/{t:04d}.png', magnification=1)
-                t += 1
-                yield
-        anim()
-
-    mlab.show()
-
-# import pdb
-# pdb.set_trace()
+mlab.show()
