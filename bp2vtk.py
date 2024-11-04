@@ -444,6 +444,7 @@ def readVarsSIMP(f, Ntheta=10, Nzeta=10, s_idx=50) :
     lmns = f.read('lmns')
     phi =  f.read('phi')
     nfp =  f.read('nfp')
+    ns = f.read('ns')
 
     if theta_zero_mid : tax = np.linspace(-np.pi, np.pi, Ntheta)
     else : tax = np.linspace(0, np.pi*2, Ntheta)
@@ -642,7 +643,7 @@ def readVarsSIMP(f, Ntheta=10, Nzeta=10, s_idx=50) :
     print(' --- ', X2.shape, Y2.shape, Z2.shape)
     print(' ---- ', varR.shape, varZ.shape, varL.shape)
     
-    return X2, Y2, Z2, varR, varZ, varL, nfp
+    return X2, Y2, Z2, varR, varZ, varL, nfp, ns
 
 
 def dumpDS(ds, fname) :
@@ -973,7 +974,11 @@ def createSrfs(X,Y,Z,L, nTheta, nZeta, nfp, surfaces) :
         for p in range(nPlanes) :
             offset0 = p*ptsPerPlane + srfOffset
             offset1 = (p+1)*ptsPerPlane + srfOffset
-            if p == nPlanes-1 : offset1 = 0
+            if p == nPlanes-1 :
+                offset1 = 0
+                if nfp == 1 :
+                    break
+
             for i in range(ptsPerPlane-1) :
                 p0 = offset0 + i
                 p1 = p0+1
@@ -1017,6 +1022,15 @@ def getLambda(xm, xn, lmns, theta, zeta=0, s_idx=100):
         # sum over Fourier modes
         x = xm*theta - xn*zeta
         L = np.sum(lmns[s_idx] * np.sin(x))
+        Ls = lmns[s_idx]
+        print('s_idx= ', s_idx)
+        print('lmns: ', lmns.shape, lmns.min(), lmns.max())
+        print('  Ls: ', Ls.shape, Ls.min(), Ls.max())
+        print('xm: ', xm.shape, xm.min(), xm.max())
+        print('zeta/theta=', zeta, theta)
+        print('X= ', x.shape, x.min(), x.max())
+        print('L: ', L.shape, L.min(), L.max())
+        #shit()
         return L
 
 def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
@@ -1036,6 +1050,9 @@ def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
         # Given: theta* = theta + lambda
         # compute: f = RHS - theta*
         RHS = [t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx) for t in tax]
+        print('RHS: ', len(RHS), min(RHS), max(RHS))
+        #shit()
+
         f = np.array(RHS) - thetaStar
 
         # check for wrap around
@@ -1083,7 +1100,7 @@ def pad(data,zeta,theta, z0, threshold=0.8):
 
     return Q2,z2,t2
 
-def init(f, specieIdx, srfIdx, lmns) :
+def init(f, specieIdx, srfIdx, lmns, psiN=0.434) :
     time = f.read('Grids/time')
     Qtz = f.read('Diagnostics/HeatFlux_zst')
     scale = f.read('Geometry/theta_scale')
@@ -1096,8 +1113,13 @@ def init(f, specieIdx, srfIdx, lmns) :
     thetaStar = theta
     N = len(zeta)
     theta_v = np.zeros(N)
+    #self.s in VMEC reader
+    sss = np.linspace(1e-10, 1, ns)
+    s = np.argmin(np.abs(sss - psiN))
+
     for j in range(N) :
-        theta_v[j] = invertTheta(xm, xn, lmns, thetaStar[j], zeta[j], s_idx=srfIdx)
+        theta_v[j] = invertTheta(xm, xn, lmns, thetaStar[j], zeta[j], s_idx=s)
+    print('THETA', theta_v.shape, theta_v.min(), theta_v.max())
 
     Qtz = f.read('Diagnostics/HeatFlux_zst')[:,specieIdx,:]
     Q_gx = np.mean(Qtz[int(len(time)/2):,:], axis=0)
@@ -1107,22 +1129,38 @@ def init(f, specieIdx, srfIdx, lmns) :
 
     Q = Q_gx*fluxDenom
     norm = jacobian*grho
+    print('zeta:', zeta.shape, zeta.min(), zeta.max())
+    print('thetaStar', thetaStar.shape, thetaStar.min(), thetaStar.max())
+    print('theta_v:', theta_v.shape, theta_v.min(), theta_v.max())
 
     return (zeta, theta_v, Q, Q_gx, norm)
 
-def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1) :
+def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, ns, flux0, flux1, out0, out1) :
     specieIdx = 0
 
     (zeta0, theta0, Q0, Q_gx0, norm0) = init(out0, specieIdx, srfIdx, lmns)
-    (zeta1, theta1, Q1, Q_gx1, norm1) = init(out0, specieIdx, srfIdx, lmns)
+    (zeta1, theta1, Q1, Q_gx1, norm1) = init(out1, specieIdx, srfIdx, lmns)
 
     zeta_n0 = zeta0 % (2*np.pi/nfp)
     zeta_n1 = zeta1 % (2*np.pi/nfp)
+    print('zeta_n0= ', zeta_n0.shape, zeta_n0.min(), zeta_n0.max())
+    print('zeta_n1= ', zeta_n1.shape, zeta_n1.min(), zeta_n1.max())
+    #shit()
 
     zeta = np.concatenate([zeta_n0, zeta_n1])
     z0 = np.pi/nfp
     zeta = (zeta + z0) % (2*z0) - z0
     theta = np.concatenate([theta0, theta1])
+    print('theta0:', theta0.size)
+    print(theta0.min(), theta0.max())
+    #shit()
+
+    print('Q0: ', Q0.shape, Q0.min(), Q0.max())
+    print('Q1: ', Q1.shape, Q1.min(), Q1.max())
+    print('Qgx0: ', Q_gx0.shape, Q_gx0.min(), Q_gx0.max())
+    print('Qgx1: ', Q_gx1.shape, Q_gx1.min(), Q_gx1.max())
+    print('norm0: ', norm0.shape, norm0.min(), norm0.max())
+    print('norm1: ', norm1.shape, norm1.min(), norm1.max())
 
     Q = np.concatenate([Q0,Q1])
     Q_gx = np.concatenate([Q_gx0, Q_gx1])
@@ -1132,12 +1170,14 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1
     Q2, z2, t2 = pad(Q,zeta,theta, z0)
     N2, z2, t2 = pad(norm,zeta,theta, z0)
 
+    print('pad: Q_gx2: ', Q_gx2.shape, Q_gx2.min(), Q_gx2.max())
+
     tax = np.linspace(-np.pi,np.pi, ntheta)
     zax = np.linspace(-z0,z0, nzeta)
     Z,T = np.meshgrid(zax,tax)
     Qsamp = griddata((z2,t2), Q2, (Z,T), method='linear')
     Nsamp = griddata((z2,t2), N2, (Z,T), method='linear')
-    print('Qsamp.shape= ', Qsamp.shape)
+    print('Qsamp.shape= ', Qsamp.shape, Qsamp.min(), Qsamp.max())
     area = 4*np.pi**2/nfp
     dA = area / (nzeta-1) / (ntheta-1)
 
@@ -1148,18 +1188,48 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, flux0, flux1, out0, out1
     # apply stellarator symmetry to Q
     zn = np.linspace(0,np.pi*2,nfp,endpoint=False)
     Q_n = []
+    Q_n2 = []
     for z in zn:
         Q_n.append(Qsamp.T)
+        Q_n2.append(Qsamp.T.transpose())
+        print(':: ', Qsamp.T.shape, Qsamp.T.transpose().shape)
 
     Q_PLOT = np.concatenate(Q_n,axis=0) / N_int * area
+    Q_PLOT2 = np.concatenate(Q_n2,axis=0) / N_int * area
     q1d = Q_PLOT.flatten()
+    q1d2 = Q_PLOT2.flatten()
+
+    print('Q_plot: ', q1d.shape, q1d.min(), q1d.max())
+    print('Q_plot2: ', q1d2.shape, q1d2.min(), q1d2.max())
+    for i in range(0, q1d.shape[0], 210) :
+        print(i, ':', q1d[i])
     print(Q_PLOT.shape)
+    print('Qsamp.T: ', Qsamp.T.shape, Qsamp.T.min(), Qsamp.T.max())
     print('srf: ', srf.GetNumberOfPoints(), srf.GetNumberOfCells())
     arr = vtk.vtkFloatArray()
     arr = vtk.util.numpy_support.numpy_to_vtk(q1d, deep=True, array_type=vtk.VTK_FLOAT)
     arr.SetName('QStuff')
     srf.GetPointData().AddArray(arr)
 
+    arr2 = vtk.vtkFloatArray()
+    arr2 = vtk.util.numpy_support.numpy_to_vtk(q1d2, deep=True, array_type=vtk.VTK_FLOAT)
+    arr2.SetName('QStuff2')
+    srf.GetPointData().AddArray(arr2)
+
+    idxArr = []
+    for k in range(nfp) :
+        _idx = []
+        for zi in range(nzeta) :
+           for ti in range(ntheta) :
+               _idx.append(zi)
+        idxArr.append(_idx)
+    IDX_ARR = np.concatenate(idxArr)
+    IDX_ARR = IDX_ARR.reshape((nzeta*nfp, ntheta))
+    _idxArr = IDX_ARR.flatten()
+    arr3 = vtk.vtkFloatArray()
+    arr3 = vtk.util.numpy_support.numpy_to_vtk(_idxArr, deep=True, array_type=vtk.VTK_FLOAT)
+    arr3.SetName('INDEX')
+    srf.GetPointData().AddArray(arr3)
     print('hello')
     return srf
 
@@ -1181,7 +1251,7 @@ nzeta = 20
 ntheta = 20
 nzeta = 50
 ## DRP
-ntheta = 25
+ntheta = 100
 nzeta = 25
 
 #X,Y,Z,vR,vZ,vL = createVTK(ds, ntheta, nzeta)
@@ -1223,6 +1293,7 @@ if False :
 ##Read in multiple surfaces
 X,Y,Z,vR,vZ,vL = ([],[],[],[],[],[])
 nfp = -1
+ns = -1
 srfSelect = [43]
 for sIdx in srfSelect :
     out = readVarsSIMP(f, ntheta, nzeta, sIdx)
@@ -1233,15 +1304,18 @@ for sIdx in srfSelect :
     vZ.append(out[4])
     vL.append(out[5])
     nfp = out[6]
+    ns = out[7]
 
-xm = f.read('xm').shape[0]
-xn = f.read('xn').shape[0]
+xm = f.read('xm')
+xn = f.read('xn')
 lmns = f.read('lmns')
 createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid.vtk', srfSelect)
+
+#nfp = 1
 srf = createSrfs(X,Y,Z,vL,  ntheta, nzeta, nfp, srfSelect)
 #dumpDS(srf, 'srf_duplicate.vtk')
 
-srf = addQ(srf, xm, xn, lmns, srfSelect[0], ntheta, nzeta, nfp, readADIOS(flux0), readADIOS(flux1), readADIOS(out0), readADIOS(out1))
+srf = addQ(srf, xm, xn, lmns, srfSelect[0], ntheta, nzeta, nfp, ns, readADIOS(flux0), readADIOS(flux1), readADIOS(out0), readADIOS(out1))
 
 dumpDS(srf, 'srf_duplicate.vtk')
 

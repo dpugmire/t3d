@@ -46,6 +46,7 @@ class VmecReader():
         self.rmnc = np.array(get(f, 'rmnc'))
         self.zmns = np.array(get(f, 'zmns'))
         self.lmns = np.array(get(f, 'lmns'))
+        print(fin, ': lmns= ', self.lmns.shape, self.lmns.min(), self.lmns.max())
         self.bmnc = np.array(get(f, 'bmnc'))
         self.bsupumnc = np.array(get(f, 'bsupumnc'))
         self.bsupvmnc = np.array(get(f, 'bsupvmnc'))
@@ -194,6 +195,14 @@ class VmecReader():
         # sum over Fourier modes
         x = self.xm*theta - self.xn*zeta
         L = np.sum(self.lmns[s_idx] * np.sin(x))
+        Ls = self.lmns[s_idx]
+        print('s_idx= ', s_idx)
+        print('lmns: ', self.lmns.shape, self.lmns.min(), self.lmns.max())
+        print('  Ls: ', Ls.shape, Ls.min(), Ls.max())
+        print('xm: ', self.xm.shape, self.xm.min(), self.xm.max())
+        print('zeta/theta=', zeta, theta)
+        print('X= ', x.shape, x.min(), x.max())
+        print('L: ', L.shape, L.min(), L.max())
         return L
 
     def invertTheta(self, thetaStar, zeta=0, N_interp=50, s_idx=100):
@@ -213,6 +222,8 @@ class VmecReader():
         # Given: theta* = theta + lambda
         # compute: f = RHS - theta*
         RHS = [t + self.getLambda(t, zeta=zeta, s_idx=s_idx) for t in tax]
+        print('RHS: ', len(RHS), min(RHS), max(RHS))
+        #shit()
         f = np.array(RHS) - thetaStar
 
         # check for wrap around
