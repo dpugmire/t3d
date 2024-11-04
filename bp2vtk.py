@@ -1028,6 +1028,38 @@ def getLambda(xm, xn, lmns, theta, zeta=0, s_idx=100):
         print('L: ', L.shape, L.min(), L.max())
         return L
 
+# Linear interpolation function
+def interp1d_linear(x, y):
+    def interpolated_function(x_val):
+        # Find the interval for x_val
+        for i in range(len(x) - 1):
+            if x[i] <= x_val <= x[i + 1]:
+                # Linear interpolation formula
+                y_val = y[i] + (y[i + 1] - y[i]) * (x_val - x[i]) / (x[i + 1] - x[i])
+                return y_val
+        raise ValueError("x_val is out of bounds of interpolation data.")
+    return interpolated_function
+
+# Root finding function using the bisection method
+def root_scalar_bisection(func, a, b, tol=1e-8, max_iter=100):
+    if func(a) * func(b) >= 0:
+        raise ValueError("The function must have opposite signs at the endpoints a and b.")
+    
+    for iteration in range(max_iter):
+        c = (a + b) / 2  # Midpoint
+        func_c = func(c)
+        
+        if abs(func_c) < tol:  # Root found within tolerance
+            return c
+        
+        # Narrow the interval
+        if func(a) * func_c < 0:
+            b = c
+        else:
+            a = c
+    
+    raise ValueError("Root not found within maximum number of iterations.")
+
 def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
         '''
         This function finds the theta
@@ -1044,7 +1076,11 @@ def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
 
         # Given: theta* = theta + lambda
         # compute: f = RHS - theta*
-        RHS = [t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx) for t in tax]
+        #RHS = [t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx) for t in tax]
+        RHS = []
+        for t in tax :
+            val = t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx)
+            RHS.append(val)
         print('RHS: ', len(RHS), min(RHS), max(RHS))
 
         f = np.array(RHS) - thetaStar
@@ -1059,19 +1095,42 @@ def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
             offset = offset + np.pi
 
         # find root from interpolated function
+        #returns a function where: func(tax) = f
+        # uses linear interpolation.
         func = interp1d(tax, f)
         theta = root_scalar(func, method='toms748', bracket=(-np.pi, np.pi))['root']
-        return theta - offset
+
+        _func = interp1d_linear(tax, f)
+        _theta = root_scalar_bisection(_func, -np.pi, np.pi)
+        diff = theta - _theta
+        if abs(diff) > 1e-7 :
+            raise ValueError('error! ', theta, _theta, diff)
+
+        return _theta - offset
+        #return theta - offset
 
 def pad(data,zeta,theta, z0, threshold=0.8):
     '''
     Use periodicity to add boundary data before interpolation
     '''
+    def np_argwhere(arr, val, cmpGT) :
+        out = []
+        for i in range(arr.shape[0]) :
+            if cmpGT == True :
+                if arr[i] > val : out.append(i)
+            else :
+                if arr[i] < val : out.append(i)
+
+        return np.array(out)
+
 
     # pad theta
     t_max = np.pi * threshold
-    arg1 = np.argwhere(theta > t_max)[:,0]
-    arg2 = np.argwhere(theta < -t_max)[:,0]
+    #arg1 = np.argwhere(theta > t_max)[:,0]
+    #arg2 = np.argwhere(theta < -t_max)[:,0]
+    arg1 = np_argwhere(theta, t_max, True)
+    arg2 = np_argwhere(theta, -t_max, False)
+
     t1 = np.concatenate([theta, theta[arg1]-2*np.pi, theta[arg2]+2*np.pi])
     z1 = np.concatenate([zeta, zeta[arg1], zeta[arg2]])
     Q1 = np.concatenate([data, data[arg1], data[arg2]])
@@ -1082,8 +1141,10 @@ def pad(data,zeta,theta, z0, threshold=0.8):
 
     # pad zeta
     z_max = z0 * threshold
-    arg1 = np.argwhere(z1 > z_max)[:,0]
-    arg2 = np.argwhere(z1 < -z_max)[:,0]
+    #arg1 = np.argwhere(z1 > z_max)[:,0]
+    #arg2 = np.argwhere(z1 < -z_max)[:,0]
+    arg1 = np_argwhere(z1, z_max, True)
+    arg2 = np_argwhere(z1,  -z_max, False)
     t2 = np.concatenate([t1, t1[arg1], t1[arg2]])
     z2 = np.concatenate([z1, z1[arg1]-2*z0, z1[arg2]+2*z0])
     Q2 = np.concatenate([Q1, Q1[arg1], Q1[arg2]])
