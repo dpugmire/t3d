@@ -430,11 +430,7 @@ def DotIt(R, phi, doCos) :
             
             
 
-def readVarsSIMP(f, Ntheta=10, Nzeta=10, s_idx=50) :
-    theta_zero_mid = False
-    zeta_zero_mid = False
-    full_torus = True
-
+def readVarsSIMP(f, Ntheta=10, Nzeta=10, s_idx=50, theta_zero_mid=True, zeta_zero_mid=True, full_torus=True) :
     xm = f.read('xm')
     xn = f.read('xn')
 
@@ -1030,7 +1026,6 @@ def getLambda(xm, xn, lmns, theta, zeta=0, s_idx=100):
         print('zeta/theta=', zeta, theta)
         print('X= ', x.shape, x.min(), x.max())
         print('L: ', L.shape, L.min(), L.max())
-        #shit()
         return L
 
 def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
@@ -1051,7 +1046,6 @@ def invertTheta(xm, xn, lmns, thetaStar, zeta=0, N_interp=50, s_idx=100):
         # compute: f = RHS - theta*
         RHS = [t + getLambda(xm, xn, lmns, t, zeta=zeta, s_idx=s_idx) for t in tax]
         print('RHS: ', len(RHS), min(RHS), max(RHS))
-        #shit()
 
         f = np.array(RHS) - thetaStar
 
@@ -1145,7 +1139,6 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, ns, flux0, flux1, out0, 
     zeta_n1 = zeta1 % (2*np.pi/nfp)
     print('zeta_n0= ', zeta_n0.shape, zeta_n0.min(), zeta_n0.max())
     print('zeta_n1= ', zeta_n1.shape, zeta_n1.min(), zeta_n1.max())
-    #shit()
 
     zeta = np.concatenate([zeta_n0, zeta_n1])
     z0 = np.pi/nfp
@@ -1153,7 +1146,6 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, ns, flux0, flux1, out0, 
     theta = np.concatenate([theta0, theta1])
     print('theta0:', theta0.size)
     print(theta0.min(), theta0.max())
-    #shit()
 
     print('Q0: ', Q0.shape, Q0.min(), Q0.max())
     print('Q1: ', Q1.shape, Q1.min(), Q1.max())
@@ -1188,21 +1180,13 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, ns, flux0, flux1, out0, 
     # apply stellarator symmetry to Q
     zn = np.linspace(0,np.pi*2,nfp,endpoint=False)
     Q_n = []
-    Q_n2 = []
     for z in zn:
         Q_n.append(Qsamp.T)
-        Q_n2.append(Qsamp.T.transpose())
-        print(':: ', Qsamp.T.shape, Qsamp.T.transpose().shape)
 
     Q_PLOT = np.concatenate(Q_n,axis=0) / N_int * area
-    Q_PLOT2 = np.concatenate(Q_n2,axis=0) / N_int * area
     q1d = Q_PLOT.flatten()
-    q1d2 = Q_PLOT2.flatten()
 
     print('Q_plot: ', q1d.shape, q1d.min(), q1d.max())
-    print('Q_plot2: ', q1d2.shape, q1d2.min(), q1d2.max())
-    for i in range(0, q1d.shape[0], 210) :
-        print(i, ':', q1d[i])
     print(Q_PLOT.shape)
     print('Qsamp.T: ', Qsamp.T.shape, Qsamp.T.min(), Qsamp.T.max())
     print('srf: ', srf.GetNumberOfPoints(), srf.GetNumberOfCells())
@@ -1210,11 +1194,6 @@ def addQ(srf, xm, xn, lmns, srfIdx, ntheta, nzeta, nfp, ns, flux0, flux1, out0, 
     arr = vtk.util.numpy_support.numpy_to_vtk(q1d, deep=True, array_type=vtk.VTK_FLOAT)
     arr.SetName('QStuff')
     srf.GetPointData().AddArray(arr)
-
-    arr2 = vtk.vtkFloatArray()
-    arr2 = vtk.util.numpy_support.numpy_to_vtk(q1d2, deep=True, array_type=vtk.VTK_FLOAT)
-    arr2.SetName('QStuff2')
-    srf.GetPointData().AddArray(arr2)
 
     idxArr = []
     for k in range(nfp) :
@@ -1294,9 +1273,12 @@ if False :
 X,Y,Z,vR,vZ,vL = ([],[],[],[],[],[])
 nfp = -1
 ns = -1
+theta_zero_mid = True
+zeta_zero_mid = True
+full_torus = True
 srfSelect = [43]
 for sIdx in srfSelect :
-    out = readVarsSIMP(f, ntheta, nzeta, sIdx)
+    out = readVarsSIMP(f, ntheta, nzeta, sIdx, theta_zero_mid=theta_zero_mid, zeta_zero_mid=zeta_zero_mid, full_torus=full_torus)
     X.append(out[0])
     Y.append(out[1])
     Z.append(out[2])
@@ -1309,7 +1291,7 @@ for sIdx in srfSelect :
 xm = f.read('xm')
 xn = f.read('xn')
 lmns = f.read('lmns')
-createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid.vtk', srfSelect)
+#createGrids(ntheta, nzeta, nfp, X,Y,Z,vL, [vR,vZ,vL], ['R','Z','L'], 'grid.vtk', srfSelect)
 
 #nfp = 1
 srf = createSrfs(X,Y,Z,vL,  ntheta, nzeta, nfp, srfSelect)

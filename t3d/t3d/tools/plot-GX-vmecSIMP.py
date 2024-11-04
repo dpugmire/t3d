@@ -73,7 +73,6 @@ class FluxTube:
             print('theta: ', theta.shape, theta.min(), theta.max())
             print('zeta: ', zeta.shape, zeta.min(), zeta.max())
             print('zeta_center ', zeta_center.shape, zeta_center.min(), zeta_center.max())
-            shit()
 
         self.alpha = alpha
         self.iota = iota
@@ -130,6 +129,21 @@ class FluxTube:
         X,Y,Z = (None, None, None)
         return X,Y,Z
 
+def dumpPts(X,Y,Z, fname) :
+    f = open(fname, 'w')
+    nx = X.shape[0]
+    ny = X.shape[1]
+
+    f.write('X,Y,Z\n')
+    for xi in range(nx) :
+        for yi in range(ny) :
+            x = X[xi,yi]
+            y = Y[xi,yi]
+            z = Z[xi,yi]
+            f.write('%lf, %lf, %lf\n' % (x,y,z))
+
+    f.close()
+
 def pad(data,zeta,theta, threshold=0.8):
     '''
     Use periodicity to add boundary data before interpolation
@@ -180,7 +194,6 @@ print('f1/f2.Q_gx.shape= ', f1.Q_gx.shape, f2.Q_gx.shape)
 print('f1.zeta_n.shape= ', f1.zeta_n.shape, f2.zeta_n.shape)
 print('zeta_n0= ', f1.zeta_n.shape, f1.zeta_n.min(), f1.zeta_n.max())
 print('zeta_n1= ', f2.zeta_n.shape, f2.zeta_n.min(), f2.zeta_n.max())
-#shit()
 print('f1/f2.theta_v.shape= ', f1.theta_v.shape, f2.theta_v.shape)
 
 zeta = np.concatenate([f1.zeta_n, f2.zeta_n])
@@ -189,7 +202,6 @@ zeta = (zeta + z0) % (2*z0) - z0
 theta = np.concatenate([f1.theta_v, f2.theta_v])
 print('f1.theta_v:', f1.theta_v.size)
 print(f1.theta_v.min(), f1.theta_v.max())
-#shit()
 
 Q_gx = np.concatenate([f1.Q_gx,f2.Q_gx])  # only for plotting, not for computation
 Q = np.concatenate([f1.Q,f2.Q])  # Q_gx * sum1D( norm ), norm = jacobian * grho
@@ -246,12 +258,13 @@ print('VMEC(zeta,theta, nfp): ', Nzeta, Ntheta, vmec.nfp)
 X,Y,Z = vmec.getSurfaceMesh(Nzeta=Nzeta, Ntheta=Ntheta,s_idx=srf_idx,zeta_zero_mid=True, theta_zero_mid=True, full_torus=True)
 nfp = vmec.nfp
 
-nfp = 1
+#nfp = 1
 if nfp == 1 :
     #grab first part of mesh...
     X = X[0:25, 0:100]
     Y = Y[0:25, 0:100]
     Z = Z[0:25, 0:100]
+dumpPts(X,Y,Z, 'vmecPoints.txt')
 
 # apply stellarator symmetry to Q
 zn = np.linspace(0,np.pi*2,vmec.nfp,endpoint=False)
@@ -289,9 +302,9 @@ print('XYZ:', X.shape, Y.shape, Z.shape)
 fig = mlab.figure(bgcolor=(1,1,1), fgcolor=(0.,0.,0.), size=(1000,800))
 cmap = 'hot'
 cmap = 'viridis'
-#mesh = mlab.mesh(X, Y, Z, scalars=Q_PLOT, colormap=cmap)
+mesh = mlab.mesh(X, Y, Z, scalars=Q_PLOT, colormap=cmap)
 #mesh = mlab.mesh(X.transpose(), Y.transpose(), Z.transpose(), scalars=Q_PLOT.transpose(), colormap=cmap)
-mesh = mlab.mesh(X, Y, Z, scalars=IDX_ARR, colormap=cmap)
+#mesh = mlab.mesh(X, Y, Z, scalars=IDX_ARR, colormap=cmap)
 fig.scene.show_axes = True
 
 legend = mesh.module_manager.scalar_lut_manager
